@@ -1,0 +1,1133 @@
+SRE interview: Linux system/network questions
+
+Evaluation areas:
+
+Kernel
+System space vs userspace, syscalls and implementation:
+Kernel space is strictly reserved for running a privileged operating system kernel, kernel extensions, and most device drivers. In contrast, user space is the memory area where application software and some drivers execute.
+
+System calls are how a program enters the kernel to perform some task. Programs use system calls to perform a variety of operations such as: creating processes, doing network and file IO, etc
+
+Context switching/interrupt:
+A context switch is described as the kernel suspending execution of one process on the CPU and resuming execution of some other process that had previously been suspended. A context switch is required for every interrupt and every task that the scheduler picks.
+
+Process vs thread:
+Process means a program is in execution, a thread means a segment of a process.
+A Process is not Lightweight, whereas Threads are Lightweight.
+A Process takes more time to terminate, and the thread takes less time to terminate.
+Process takes more time for creation, whereas Thread takes less time for creation.
+Process likely takes more time for context switching whereas as Threads takes less time for context switching.
+A Process is mostly isolated, whereas Threads share memory.
+Process does not share data, and Threads share data with each other.
+
+Bootup process:
+BIOS - basic input/output system, executes the MBR
+MBR - Master Boot Record, executes GRUB
+GRUB - Grand Unified Bootloader, executes Kernel
+Kernel - executes /sbin/init
+Init - executes run level programs
+Runlevel - executed from /etc/rc.d/rc*.d/
+* More detail at bottom of page
+
+Numa (Non-uniform memory access):
+NUMA is a computer memory design used in multiprocessing, where the memory access time depends on the memory location relative to the processor. Under NUMA, a processor can access its own local memory faster than non-local memory (memory local to another processor or memory shared between processors). The benefits of NUMA are limited to particular workloads, notably on servers where the data is often associated strongly with certain tasks or users.
+
+Namespace:
+Namespaces are a feature of the Linux kernel that partitions kernel resources such that one set of processes sees one set of resources while another set of processes sees a different set of resources. The feature works by having the same namespace for a set of resources and processes, but those namespaces refer to distinct resources. Resources may exist in multiple spaces. Examples of such resources are process IDs, hostnames, user IDs, file names, and some names associated with network access, and interprocess communication cpu/cpuset cgroup
+
+--
+
+Memory
+Linux memory model, RSS/VM/Shared memories:
+
+Tools to investigate mem usage at process and system level.:
+
+Ways to control/limit memory usage (ulimit, cgroup etc.):
+
+Swap and paging:
+Paging refers to writing portions, termed pages, of a process' memory to disk. Swapping, strictly speaking, refers to writing the entire process, not just part, to disk. In Linux, true swapping is exceedingly rare, but the terms paging and swapping often are used interchangeably.
+
+OOM, overcommit:
+Overcommit refers to the practice of giving out virtual memory with no guarantee that physical storage for it exists. When a ystem such as Linux utilizing virtual memory allocates memory to a userspace process (via brk or mmap), there is no fixed correspondence between the virtual memory created in the process's virtual address space and the physical memory of the machine.
+
+The Out Of Memory Killer or OOM Killer is a process that the linux kernel employs when the system is critically low on memory. This situation occurs because the linux kernel has over allocated memory to its processes. When a process starts it requests a block of memory from the kernel.
+
+--
+
+Filesystem
+Common file systems, difference among them:
+
+Tools to view filesystem/disk level information and statistics:
+
+Bind mount, special device mount:
+
+Understand RAID, distributed filesystems:
+RAID 0 - Striping
+- Splits ("stripes") data evenly across two or more disks, without parity information, redundancy, or fault tolerance. Provides no fault tolerance or redundancy, the failure of one drive will cause the entire array to fail; as a result of having data striped across all disks, the failure will result in total data loss
+
+RAID 1 - Mirroring
+- Consists of an exact copy (or mirror) of a set of data on two or more disks; a classic RAID 1 mirrored pair contains two disks. This configuration offers no parity, striping, or spanning of disk space across multiple disks, since the data is mirrored on all disks belonging to the array, and the array can only be as big as the smallest member disk. This layout is useful when read performance or reliability is more important than write performance or the resulting data storage capacity.
+
+RAID 5 - Striping with Distributed Parity
+- Consists of block-level striping with distributed parity. Unlike in RAID 4, parity information is distributed among the drives. It requires that all drives but one be present to operate. Upon failure of a single drive, subsequent reads can be calculated from the distributed parity such that no data is lost. RAID 5 requires at least three disks.
+
+RAID 10 - Striping+Mirroring
+- Need at least 4 drives. Combining these two storage levels makes RAID 10 fast and resilient at the same time. If you need hardware-level protection for your data and faster storage performance, RAID 10 is a simple, relatively inexpensive fix. RAID 10 is secure because mirroring duplicates all your data. It's fast because the data is striped across multiple disks; chunks of data can be read and written to different disks simultaneously.
+
+DFS is a file system that is distributed on multiple file servers or multiple locations. It allows programs to access or store isolated files as they do with the local ones, allowing programmers to access files from any network or computer.
+
+VFS layer, FUSE:
+
+IO scheduling (CFS vs deadline etc.):
+In computing, scheduling is the action of assigning resources to perform tasks. The resources may be processors, network links or expansion cards. The tasks may be threads, processes or data flows.
+
+CFS (Completely Fair Scheduler) is an I/O scheduler that is the default scheduler of the tasks of the SCHED_NORMAL class (i.e., tasks that have no real-time execution constraints). It handles CPU resource allocation for executing processes, and aims to maximize overall CPU utilization while also maximizing interactive performance.
+
+Deadline Scheduler is n I/O scheduler for the Linux kernel and guarantee a start service time for a request. Deadline Scheduler imposes deadlines on all I/O operations in order to prevent wanted requests. Two deadline read and write queues (basically sorted by their deadline) are maintained.
+
+Ways to improve I/O performance: cache and buffer. Trade-offs:
+Choose the correct I/O scheduler that best suits your needs.
+Use `cat /sys/block/sda/queue/scheduler` to check active scheduler.
+
+Ways to tracing I/O, explain I/O merging, I/O context losing:
+Can use tracer programs such as `strace` to trace I/O. This will show what kind of I/O operations a program is doing.
+
+I/O merging is when the I/O scheduler reduces the overhead of multiple requests down to a single request. More importantly, only a single command needs to be issued to the disk and servicing the multiple requests can be done without seeking. Consequently, merging requests reduces overhead and minimizes seeks.
+
+--
+
+Security
+File system security model:
+The Linux security model is based on the one used on UNIX systems, and is as rigid as the UNIX security model (and sometimes even more), which is already quite robust. On a Linux system, every file is owned by a user and a group user.
+
+PAM (Pluggable Authentication Modules):
+PAM is a mechanism to integrate multiple low-level authentication schemes into a high-level application programming interface (API). PAM allows programs that rely on authentication to be written independently of the underlying authentication scheme
+
+Linux capabilities:
+Linux capabilities are special attributes in the Linux kernel that grant processes and binary executables specific privileges that are normally reserved for processes whose effective user ID is 0 (The root user, and only the root user, has UID 0). Essentially, the goal of capabilities is to divide the power of 'root' into specific privileges, so that if a process or binary that has one or more capability is exploited, the potential damage is limited when compared to the same process running as root.
+
+
+--
+
+Troubleshooting
+Tools: top/atop, vmstat, sar, strace/ltrace, perf, gdb, tcpdump, ss etc.
+
+Explain typical usage of different tool:
+
+Explain how do different tools work (ptrace, eBPF etc.):
+
+Troubleshooting process (tech and non-tech/process):
+
+--
+
+Shell
+Command execution, command search order, environment variables:
+
+Shell expansion:
+
+Redirection and pipe:
+
+Signal handling:
+
+--
+
+Network basics
+TCP/UDP, IP, ICMP:
+Transmission Control Protocol (TCP) is connection-oriented, meaning once a connection has been established, data can be transmitted in two directions. TCP has built-in systems to check for errors and to guarantee data will be delivered in the order it was sent, making it the perfect protocol for transferring information like still images, data files, and web pages.
+
+User Datagram Protocol (UDP) is a simpler, connectionless Internet protocol wherein error-checking and recovery services are not required. With UDP, there is no overhead for opening a connection, maintaining a connection, or terminating a connection; data is continuously sent to the recipient, whether or not they receive it. Use cases involve Video conferencing, streaming, DNS, VoIP, etc
+
+TCP is a connection-oriented protocol, whereas UDP is a connectionless protocol. A key difference between TCP and UDP is speed, as TCP is comparatively slower than UDP. Overall, UDP is a much faster, simpler, and efficient protocol, however, retransmission of lost data packets is only possible with TCP. Used by HTTPS, HTTP, SMTP, POP, FTP, etc
+
+The Internet Protocol (IP) is a protocol, or set of rules, for routing and addressing packets of data so that they can travel across networks and arrive at the correct destination. Data traversing the Internet is divided into smaller pieces, called packets. IP information is attached to each packet, and this information helps routers to send packets to the right place.
+
+Internet Control Message Protocol (ICMP) is a network layer protocol used by network devices to diagnose network communication issues. ICMP is mainly used to determine whether or not data is reaching its intended destination in a timely manner. Commonly, the ICMP protocol is used on network devices, such as routers. ICMP is crucial for error reporting and testing, but it can also be used in distributed denial-of-service (DDoS) attacks.
+
+HTTP/HTTPS, SSH, DNS, LDAP:
+
+Load balancer, L7, L4:
+
+PKI: Certificate, chain of trust, CA:
+
+TLS/SSL, Kerboros:
+Kerberos is a computer network security protocol that authenticates service requests between two or more trusted hosts across an untrusted network, like the internet. It uses secret-key cryptography and a trusted third party for authenticating client-server applications and verifying users' identities.
+
+--
+
+Ways to think:
+Monitoring and alerting
+Deployment management
+Capacity management
+Security management
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+Questions:
+
+Let's talk about swap?
+Tell me everything you know about swap
+
+Things should/can be covered/asked/discussed
+- What is swap?
+Swap is a space on a disk that is used when the amount of physical RAM memory is full. When a Linux system runs out of RAM, inactive pages are moved from the RAM to the swap space.
+
+Swap space can take the form of either a dedicated swap partition or a swap file. In most cases, when running Linux on a virtual machine, a swap partition is not present, so the only option is to create a swap file.
+
+NOTE: Swap is much slower than physical RAM.
+
+- How to configure swap?  What can be used as swap?
+Swap can be a swap file or a partition (recommended), or combo of both.
+Use `swapon` and `swapoff` to enable or disable swap
+Use `fallocate` to create a file to be used for swap
+Use `mkswap` to setup file as swap area
+Use `fdisk` to display existing partitions on HDD
+Use `free -h` to display amount of free and used system memory (or `cat /proc/swaps`)
+
+- When will swap happen? Can you change swap behavior? If yes, how?
+Swap will happen when pRAM is full and more space is needed, inactive pages in mem are moved to swap space. Or when an application is in startup a large number of pages are used for initialization then never again.
+
+- What will be sent to swap? What will not be sent to swap?
+Less used pages by the kernel. Anything set by ulimit or in the limits.conf file will not be sent to swap.
+
+- How to debug a system with lots of swapping? What tools will you use?
+Can enable kernel cgroup flags, like in grub config, to use cgroup mem controller to limit memory use.
+Can set applications to be denied mem access and stop overcommitting with sysctl.
+Use `systemd` on MemoryHigh and MemoryMax, can also try IOWeight and CPUShares
+Use `ulimit` to set mem resource limits
+
+- Can you describe the difference between major and minor page faults?
+A minor fault is when a page is in memory but not allocated to the requesting process, or not marked as present in the memory management unit.
+A major fault is when the page is no longer in memory.
+
+- When should you add more memory than swap?
+When you're confident you will always have enough RAM available and will need minimum amount of swap.
+
+---------------------------------------------------------------------
+
+Let's talk about Linux signals
+Tell me everything you know about Linux signals. 
+
+References:
+https://en.wikipedia.org/wiki/Signal_(IPC)
+http://man7.org/linux/man-pages/man7/signal.7.html
+http://www.tldp.org/LDP/tlk/ipc/ipc.html
+https://linux.die.net/man/1/stty
+
+Things should/can be covered/asked/discussed
+- What is Linux signal?
+It's a UNIX/Linux event or interrupt that's generated in response to a condition. There are maskable and non-maskable signals.
+Maskable signals can be changed or ignored by the user.
+Non-maskable is opposite, usually when there are severe hardware errors.
+
+- How do you list all the Linux signals available?
+Can use `trap -l` to list all signals on Ubuntu.
+
+- What's the connection and/or difference between signals and hardware interrupts?
+Interrupts are a means of communication between CPU and Kernel. Basically hardware saying "I need attention".
+Signals are communication between Kernel and Process, triggered by the CPU. Signals are sent to various processes running on the computer.
+
+- What tools/syscalls can be used to send signal? What permissions do you need?
+Use `kill` to send a signal to a process.
+Use keyboard mappings to send from keyboard, like CTRL+C.
+Can use C code to send signal to process from process (I would have to google snippet)
+
+- What's default behavior/action for some common ones, like sighup, sigint, sigterm etc?
+SIGHUP is a hangup detected, in terminal or death of process
+SIGINT happens when user sends an interrupt such as CTRL+C
+SIGTERM is the software termination signal
+SIGKILL means process must quit immediately and not perform any operations
+SIGQUIT happens when user sends a quit signal such as CTRL+D
+SIGSEGV segmentation fault when process violates or uses too much memory
+
+- How does process handle signals? Can this behavior change? If so, how?
+When a process receives a signal a default action occurs unless signal handling is setup.
+
+Can use function signal() to setup signal handler code, written in C++
+
+- When will signals be processed?
+When the system detects a software event, either user or process-generated.
+Kernel can also send when a hardware event occurred or an I/O event completed.
+
+The signal will be process when it reaches the process it was meant for.
+
+- In a multithreaded process, which thread will handle a signal?
+The kernel chooses the main thread, unless changed by the user.
+
+From signal man page:
+A process-directed signal may be delivered to any one of the threads that does not currently have the signal blocked. If more than one of the threads has the signal unblocked, then the kernel chooses an arbitrary thread to which to deliver the signal.
+
+- Why does process die after shell exit? How do you keep process running after shell exists?  
+Because the shell is the parent process. When a parent process dies, the children are sent a SIGHUP which will kill the process unless caught.
+
+Use `nohup` to keep a process running after shell exit (in the background)
+
+- What do those combined key strokes on shell prompt do: ctrl-c, ctrl-z, ctrl-\ , ctrl-s, ctrl-q?
+CTRL+C (SIGINT) interrupt running foreground proces
+CTRL+Z (SIGSTOP) suspend current running foreground process
+CTRL+\ sends SIGQUIT signal to foreground process
+CTRL+S stops all output to the screen
+CTRL+Q resumes after ctrl+s
+
+- [follow up of above] Who generates those signals? Can you change those behavior? how?
+The user generates these signals with the keyboard.
+Ue `stty` to change signal behavior or list current key configurations
+
+- How does command "bg" and "fg" work?
+fg is for foreground, swithces job running in background to foreground
+bg is for background, restarts suspended job and runs in background
+
+- What signals can't be blocked/ignored? Any reason?
+SIGKILL+SIGSTOP can't be blocked or ignored.
+Reason is they are asking/forcing a process to quit.
+
+- How do you find out what signals are blocked/ignored/waiting for processing by a process?
+Use `ps` to find the PID
+Use `cat /proc/$PID/status` to see which signals are blocked/ignored/caught by the process.
+
+---------------------------------------------------------------------
+
+Let's talk about Linux file system
+
+You need to prepare disk space for 5 of your team members,  they want to access their own private directory under /data/{username}, disk is accessible via /dev/sdc. Walk me through the process.
+
+TO CREATE FILESYSTEMS:
+1. Verify partition is seen by Linux by using `cat /proc/partitions`
+2. Decide which FS to use (ext4, XFS..)
+3. Use `mkfs.<fs> /dev/sdc` to create filesystem
+4. Mount filesystem, use `blkid` to get UUID of device. Use `mount` to mount FS
+
+TO CREATE DIRS FOR USERS:
+1. Use `getent passwd` or `cat /etc/passwd` to get list of users.
+2. If users don't exist, use `useradd` to create users.
+3. Use `mkdir -m 700 newdir` to create new dir with permissions
+4. Set user/group permissions on each dir according to need
+
+Reference
+https://en.wikipedia.org/wiki/File_system
+https://en.wikipedia.org/wiki/File_system_permissions 
+https://en.wikipedia.org/wiki/Filesystem_in_Userspace
+https://en.wikipedia.org/wiki/Setuid
+https://en.wikipedia.org/wiki/Sticky_bit
+https://linux.die.net/man/8/mount 
+https://www.kernel.org/doc/Documentation/filesystems/sharedsubtree.txt
+
+http://man7.org/linux/man-pages/man5/attr.5.html:
+Extended attributes or xattrs, are an extensible mechanism to store metadata on a filesystem. Metadata is a collection of information or data points about a particular object.
+
+Things should/can be covered/asked/discussed:
+- Candidate should mention: create file system, mount file system, create directory, change owner, change permission. And optionally, may talk about creating links.
+
+- What is a file system? Name a few file system types
+A file system is a collection of files/data stored on disk used by the computer to interact with the files and their locations. Built-in layer of OS to handle storage data mangement.
+Some Linux FS types are: ext, ext2, ext3, ext4, XFS, ZFS (there are many)
+Windows: NTFS, FAT, FAT16/32
+Mac: HFS
+
+- What's the reason we need different file systems?
+ext4 for stability, supports up to 16tb, unlimited number of sub dirs
+XFS for large servers and storage devices, supports 8-16XB, guaranteed rate I/O
+ZFS for integrity (checksums) and RAID, best to eliminate data loss without using cloud
+
+- What is "FUSE" or "file system in user space"? 
+A userspace filesystem that can be mounted and accessed by non-privileged users.
+Doesn't live in the kernel
+
+- What does "mount a filesystem" mean? 
+This means to make a filesystem accessible in the Linux directory tree.
+Use `mount` to mount an FS
+Use `umount` to unmount an FS
+
+- Can you mount a file system on to a directory has files/directories within it? If so, what happens to those existing files/directories? 
+Yes, nothing happens to the existing files/dirs. They are inaccessible while the FS is mounted.
+
+- Can you tell me a few common file system mount options? What do they do? (atime, noexec, nosuid, rw, ro, users etc.)
+Option nosuid ignores setuid and setgid bits
+Option noexec forbids any program from executing on mount point
+Option nodev ignored device files
+Option ro is for "read-only"
+Option rw is for "read-write"
+
+- Can you tell me what "bind mount" is? When should you use it?
+Bind mount takes existing directory tree and replicates under a different point.
+In certain ways similar to a link.
+Should be used to create read-only view of a filesystem, or remap users and groups, substitute for sumbolic links.
+
+- How do you mount some special file systems, like tmpfs, cgroup, ramfs etc.?
+For cgroup edit /etc/fstab or for one-time use "mount"
+For tmpfs and ramfs can use mount after creating tmp dir to mount to
+
+- Can you tell me something about mount propagation?
+This allows a container to share its mounted volumes to other containers in pod
+
+- Can you tell me the difference between hard link and soft link (symbolic link)? Can you create hard link to directory? Why?
+A soft (symbolic) link is an actual link to the original file.
+A hard link is a mirror copy of the original file.
+No hard links can't be created for dirs, could create a dir loop. The reason is because of inodes which lack filesnames.
+A link is a pointer to to an inode, a dir is an inode that holds links.
+
+- Where is file name or directory name saved on file system? 
+File names are aved as an name/inode lookup table in the "data" section of that filesystem
+
+- Can you tell me what does read, write and execute permission mean for a directory? What about sticky bit?
+Various dir permissions control how a user can access files within that dir.
+A sticky bit permits only the owner/root user of a file/dir to manipulate it.
+
+- Can you set different permission for different user or different group for same file? If so, how? How do you check current permission?
+Yes, different perms can be achieved at group-level.
+Use `groupadd` to create a group
+Use `usermod` to add users to group
+Use `chgrp` or `chmod` to change perms on dir/file
+Use `ls -la` to check permissions of dir/file
+
+- Can you attach/set tag/attribute to file or directory?  If so, how?
+Yes, common attribute is "i" for immuatable, "a" for append only, "c" for compressed
+Use `chattr` to change file/dir attributes
+
+- How do you delete a file with name "--all"?
+Use the inode number or `rm -- <filename>`
+
+---------------------------------------------------------------------
+
+Be the browser
+
+Tell me what happens after entering "https://www.tiktok.com" in browser address bar and hit return? As detail as possible
+(Another variation: What happens when you launch "tiktok" app on your phone? )
+
+3 Main things occur when this happens:
+- DNS
+- Network Communication (SYN, SYNC-ACK, ACK)
+- HTTP
+
+First, a DNS lookup resolves the website. Linux client checks its name service cache daemon to see if any same previous requests. If not, request is sent to name server, as specified in /etc/resolv.conf for Linux. If at home the DNS resolver is usually local router, which sends all DNS requests to resolver specified in its conf (which it may have got from Comcast). Comcast DNS server forwards request to the .com root name servers, which look up the namespace of example.com (name servers are specified when the domain is registered with registrar). Request is then sent to example.com name servers which check for "http://www.example.com" in their zone files and reply with the request. There is a forward and reverse lookup file, forward lookup matches hostname to IP. There are 2 kinds of requests; recursive and non-recursive. Recursive query is when client requests an answer which the DNS server must find and return. Non-recursive is when the DNS server doesn't return the answer, and it's up to client to talk to the next resolver in line.
+
+Second, 3-way network handshake happens, which includes a SYN -> SYN-ACK -> ACK. Once client has IP from DNS it establishes a connection to server. Client will check its routing tables for an entry to to example.com's network; if none, then client will send request for connection or sync packet to default gateway. Default gateway does same thing (checks for entry to dest network), this happens until packet reaches the Internet Gateway running BGP (Border Gateway Protocol). The BGP routing table has list of all public IPs assigned by ISPs, which will contain entry for example.com and how to get to it. ISP (Comcast) then sets destination address of packet belonging to example.com and sends it off (SYN). Once it reaches destination, dest acknowledges the SYNC packet with an ACK, and sends its own SYNC (SYNC-ACK). Same routing happens on way back at which point client sends an ACK and connection is established. Important question to ask is how does the client know which host is in its network or not? This is based on the NETMASK. If client IP is 10.1.1.100 and netmask is 255.255.255.0, the client knows that range 10.1.1.[0-256] is local area subnet, and the rest is outside of the local area subnet. The client uses ARP to figure out which MAC address to send the packet to at Layer 2.
+
+Lastly, HTTP. Once destination receives the packet, if destination is behind load balancer then the LB is either in-line or Direct Server Return (DSR). If inline then LB handles all incoming/outgoing connections between client and http server. if DSR then only incoming connections are handled by LB, outgoing connections are between web server and client. When Apache receives request on port 80 will use either forked process or a thread to pass the request to. Apache has 2 modes: worker.c and pre-fork. In pre-fork Apache uses processes that have been forked, whereas worker.c uses threads. Threads consume less resources but is more complex. Pre-fork is default, so let's say Apache forked off a process to handle our request.
+
+Reference
+https://github.com/alex/what-happens-when 
+https://en.wikipedia.org/wiki/Transmission_Control_Protocol
+https://en.wikipedia.org/wiki/Transport_Layer_Security
+https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol 
+https://en.wikipedia.org/wiki/Public_key_infrastructure
+https://en.wikipedia.org/wiki/Cross-site_scripting
+https://en.wikipedia.org/wiki/IP_routing
+
+Things should/can be covered/asked:
+- URL parsing, to get protocol, DNS name etc:
+URL parsing is a function of traffic management and load-balancing products that scan URLs to determine how to forward traffic across different links or into different servers. A URL includes a protocol identifier (http, for Web traffic) and a resource name, such as www.microsoft.com.
+
+DNS - Domain Name System
+NIS - Network Information System (aka yellow pages)
+
+- DNS name resolving
+  - Can talk about nsswitch.conf, how DNS work, local DNS cache etc.
+
+  nsswitch.conf file controls how name resolution works when looking up various objects, such as host addresses and passwords
+
+  DNS works like a phone book by mapping names (FQDN) to numbers (IP). DNS translates requests for names into IP addresses.
+
+  Local DNS cache stores recently visited websites on a local file for faster retrieval should it be accessed again.
+
+  - Can also ask when should you use TCP to query DNS?
+
+  When the size of the request/response is larger than a single packet. Example is with responses that have many records or IPv6 and DNSSEC responses.
+
+- TCP/IP
+  - Can talk about IP routing, ARP, TCP 3-way handshake etc.
+  Address Resolution Protocol (ARP). The address is "resolved" using a protocol in which a piece of information is sent by a client process from local computer to a server process on a remote computer. The information received by the server allows the server to uniquely identify the network system for which the address was required and therefore to provide the required address. The address resolution procedure is completed when the client receives a response from the server containing the required address.
+
+  IP Routing refers to protocols such as BGP, OSPF that determine the path the data takes across multiple networks to reach its destination.
+
+  Use BGP for networks that are not just for internal routing.
+  Use OSPF for internal network routing, such as within a site, company or campus.
+
+  - IPV4 vs IPV6?
+  IPv4 is the longest and most widlely used IP version. Uses 32 bit address scheme of 4 8-bit segments separated by dot (.) and can store up to 2^32 addresses. Uses ARP to map to MAC addresses. Supports broadcast.
+
+  IPv6 is newer IP version and solves the problem of ever-increasing addresses. Has 128-bit address space, separeted by colon (:). Uses NDP to discover MAC addresses.
+
+  - Port used, what is a port? How does Linux pick client side port number?
+  A network port is a 16-bit number that Linux uses to differentiate traffic destined for different services or apps on a system.
+
+  Use `nmap` or `netstat` to look up port numbers and network status.
+
+  Linux picks a port by using a number in the ephemeral port range, which are temp ports assigned by a machine's IP stack.
+
+  - What does listening on a port mean? 
+  When a service is waiting for requests from clients on a specific port
+
+  - How does Linux uniquely define a socket? 5 elements tuple.
+  A socket is a means of communication from one service/program to another, represents a network connection.
+
+  The 5-tuple is a set of five values that make up a TCP/IP connection. Includes source IP/port, dest IP/port, and the protocol being used.
+
+- TLS/SSL
+  - Can talk about PKI (Public Key Infrastructure), public/private keys, certificates, CA (certificate authority) 
+  A public key infrastructure (PKI) is a system for the creation, storage, and distribution of digital certificates which are used to verify that a particular public key belongs to a certain entity. SSL is a common example.
+
+  Public/private key pairs are used doe encryption of messages/data transmitted from a client to a web endpoint.
+
+  Certificates are used to verify identity of a client/server during an HTTP session. A valid cert chain consists of Root cert, Intermediate cert, and Server cert.
+
+  A Certificate Authority (CA) issues certificates to be used to confirm that the subject imprinted on the certificate is the owner of the public key. Public key is imprinted on the certs.
+
+  - Can talk about TLS/SSL handshake. What is used to encrypt data during and after handshake.
+  A TLS handshake is an encryption protocol that secures communication between client/server. During this exchange both client and server exchange messages to ACK each other, establish encryption algorithm, and agree on session keys.
+
+  Cipher suites are agreed on and used to encrypt data during the handshake. Once connection is established this will be the encryption algorithm used to keep the session secure. DH, RSA, ECDH, are some examples of cipher suites.
+
+- HTTP protocol 
+  - Can talk about verbs like GET, POST, PUT, DELETE etc.
+  GET is requesting to READ data from endpoint
+  POST is requesting to CREATE data at endpoint
+  PUT is requesting to UPDATE data
+  DELETE is requesting to DELETE data
+
+  - HTTP request message format: request line, header, body
+  curl GET -H "Accept: application/json; charset=utf-8" -d '{"test": "test"}' "www.example.com"
+
+  - HTTP response message format: status, header, body
+  Status: 200 (OK)
+  Header: "Content-Type: application/json; charset=utf-8"
+  Body: {"json": "data_body"}
+
+  - Difference between GET and POST from HTTP protocol?
+  GET is requesting to READ data from endpoint
+  POST is requesting to CREATE data at endpoint
+
+  - How does someone implement HTTP session?
+  By visiting a website from their browser, or defining it in a function of their code then calling that function.
+
+  Use `curl` to CONNECT URL and implement http session.
+
+  - How does client/server know the request/response finished?
+  When the request has been received by client. If never received, then when timeout occurs. Also can be closed manually be being defined in code as a function.
+  
+  - How does HTTP reduce creating new connections or reuse existing connection? Can talk about persistent connection in HTTP/1, HTTP/1.1, or HTTP/2
+  HTTP persistent connections (aka keep-alive) is the idea of using the same TCP connection to send and receive multiple HTTP requests/responses, as opposed to opening a new one for every single request/response pair. This is important for improving HTTP performance.
+  
+  - Strong candidate can talk about XSS (Cross Site Scripting)
+  XSS is a vulnerability in web security that allows the attacker to compromise interaction between client and vulnerable application.
+
+  Cross-site scripting works by manipulating a vulnerable web site so that it returns malicious JavaScript to users. When the malicious code executes inside a victim's browser, the attacker can fully compromise their interaction with the application.
+
+- VPN (Virtual Private Network)
+
+VPN is a private, encrypted tunnel between a client machine and a host/server. Extends a private network across a public network and users connected to this tunnel have access to anything they normally would in that private network.
+
+Different protocols:
+  - PPTP (Point-to-Point Tunneling Protocol)
+  Oldest/original. Provides fast speeds due to lack of modern security features/encryption. Fast data, wide support, many security issues.
+
+  - L2TP (Layer 2 Tunneling Protocol)
+  Replacement of PPTP. Usually paired with another protocol such as IPSec.
+
+  - IPSec (Internet Protocol Security)
+
+  - SSTP
+  
+
+- SSH (Secure SHell)
+
+SSH, also known as Secure Shell or Secure Socket Shell, is a network protocol that provides administrators with a secure way to access a remote computer. SSH establishes a cryptographically secured connection between two parties(client and server), authenticating each side to the other, and passing commands and output back and forth.
+
+SSH protocol uses symmetric encryption, asymmetric encryption and hashing in order to secure transmission of information. The SSH connection between the client and the server happens in three stages:
+  - Verification of the server by the client.
+  - Generation of a session key to encrypt all the communication.
+  - Authentication of the client.
+
+---------------------------------------------------------------------
+
+Be the shell
+
+Explain what happens after entering the following command in shell (bash) and hit Return? As detailed as possible:
+
+cat /jobs/{alice,bob}/logs/{50..60}/first_*_err.log 2>/dev/null | LC_ALL=C grep -iE '\bmysql\b' > /var/log/mysql.error
+
+1. `cat` will concatenate one or more files without having to open the file for editing. (first_*_err.log) is the file in this case.
+
+2. {alice,bob} is an example of Brace Expansion and will return values that match EITHER alice or bob
+
+3. {50..60} is another example of Brace Expansion that will return all values matching 50 through 60
+
+4. first_*_err.log is an example of filename expansion, and will return all files matching this naming format, where * represents a glob, or "wildcard", meaning to return any value so long as the rest of the string matches, for example:
+
+ls -l first_*_err.log
+
+could return:
+
+first_0_err.log
+first_1_err.log
+first_2_err.log
+first_3_err.log
+etc, etc
+
+5. 2>/dev/null takes errors and redirects them to a "null" file; essentially discards errors. 2 is the file descriptor and represents standard error (STDERR). > represents output redirection, specifically it will overwrite any file passed in, or create new if non existent (whereas >> will simply append output to the given file, and not overwrite). /dev/null is a place in Linux that suppresses data written to it.
+
+6. | is a linux pipe, and is used to transfer the output of the first command into the output of the second command, for example:
+
+cat myfile.txt | grep string
+
+The above will concatenate the contents of myfile.txt, then search for the text "string" and display all instances of this text to STDOUT, visible in the terminal window. The linux pipe can be used as many times as needed in a single operation.
+
+7. LC_ALL=C where LC_ALL is the environment variable that overrides all other localization settings (except for LANGUAGE), and C is the "simplest" locale to use. When LC_ALL=C is used in conjunction with the grep command, a common use-case example is the ability to force your own localization settings when checking a file with localization settings that differ from your own (think of searching a file written in Chinese, but you want to search for a string in English)
+
+8. grep -iE '\bmysql\b' will search for all strings matching "mysql", disregarding case-sensitivity and special characters. grep is a linux tool that searches for a string of characters in a specified file. The flag -i represents "case insensitivity" and tells grep to disregard upper/lower case when searching for the string. The flag -E represents escaping special characters; useful when strings being searched for include special characters that may not be found with a normal grep operation. '\bmysql\b' where the '\b' means word boundary, this tells grep to search for all words that match mysql regardless if it is at beginning/end of a line, or between two blank space characters in a sentence.
+
+9. > will redirect all output from the previous command to the specified location (/var/log/mysql.error), and overwrite the existing file, or create a new one if non existent.
+
+--------------------------
+
+Shell Expansion
+
+When does expansion happen?
+
+- After the command has been split into "tokens", these token are then expanded on and resolved.
+
+--------------------------
+
+Shell Command Execution (search order)
+
+If the command is an alias, when will alias expansion happen?
+- Very first, when the command is read, but before it is executed.
+
+What is the search order if the command contains no slashes?
+- The shell first checks shell functions, then shell builtins, then hashtab, then $PATH
+
+--------------------------
+
+File Descriptors
+
+What are default file descriptors?
+- Standard Input (STDIN), represented by 0
+- Standard Output (STDOUT), represented by 1
+- Standard Error (STDERR), represented by 2
+
+Can you change/close a file descriptor while process is running? If so, how?
+- Yes. Use linux fcntl to manipulate file descriptors. Use linux exec to open, close or copy file descriptors.
+
+Example:
+
+exec 322<&-
+
+This will close the file descriptor 322.
+
+--------------------------
+
+Redirection
+
+Explain what is redirection, how is redirection implemented? When will redirection happen, before or after command run?
+- Redirection happens before a command is run. Redirection allows commands file handles to be opened, closed, copied, reference different files. Can also change the files the command writes to and reads from. Redirections are processed in order from left to right, where > represents standard output (STDOUT) and < refers to standard input (STDIN).
+
+What is /dev/null, why do we want to redirect to it?
+- /dev/null is a location in all Linux systems that is meant for data to be written to, for purpose of being discarded. Useful for redirecting standard errors to for "cleaner" output when running commands; better for readability.
+
+--------------------------
+
+Pipe
+
+Explain what pipe is, how is pipe implemented? When will pipe happen, before or after command run?
+- The linux pipe, represented as |, is a type of redirection used to transfer the standard output of one command to a destination or another command. It is used for sending the output of one process, program, or command to another process, program, or command for additional processing.
+
+What is the difference between pipe and redirection?
+- Pipe is used to pass output to another program or utility. Redirect is used to pass output to either a file or stream.
+
+Example1:
+this1 > this2
+
+The above will execute command this1 and redirect all STDOUT to file this2. If file this2 already exists, it will be overwritten.
+
+Example2:
+this1 | this2
+
+The above will execute command this1 and redirect all STDOUT to the STDIN of command this2
+
+--------------------------
+
+ForkExec
+
+Explain how does shell run command, describe fork and exec in detail:
+- Fork and exec are most common system calls in Linux to create processes. fork() creates a new process by duplicating the calling process (the parent). The new process is referred to as the child process; this creates a parent/child relationship. The exec() family of functions replaces the current process image with a new process image. It loads the program into the current process space and runs it from the entry point. There is no parent/child concept with exec.
+
+Can also explain fork vs clone, differences in exec system call family:
+- fork() is the original UNIX system call. It can only be used to create new processes, not threads. clone() is newer and more versatile, can be used to create new processes or threads; is similar to fork() but allows much more control over what pieces of execution context are shared between the calling process and the child process.
+
+- The exec system call family is:
+execl
+execle
+execlp
+execv
+execve
+execvp
+
+It should be noted here that these functions have the same base exec followed by one or more letters. These are explained below:
+
+e represents an array of pointers that points to environment variables and is passed explicitly to the newly loaded process.
+
+l is for the command line arguments passed a list to the function
+
+p is the path environment variable which helps to find the file passed as an argument to be loaded into process.
+
+v is for the command line arguments. These are passed as an array of pointers to the function.
+
+Parent/child relationship, zombie process:
+- A child process is a process created by a parent process in Linux using the fork() system call. A child process is created as its parent process's copy and inherits most of its attributes. If a child process has no parent process, it was created directly by the kernel.
+
+- A zombie process is a process that has completed execution but still has an entry in the process table, in the terminated state. Mostly occurs when a parent process doesn't pick up the child's exit code.
+
+Environment Variables:
+- Environment Variables define the default behavior of the environment. They can be listed with the Linux command printenv. There are 2 types of environment variables: Global and Local. Globally scoped environment variables can be accessed from anywhere in that particular environment which exists in the terminal. Locally scoped environment variables cannot be accessed by any program or process running in the terminal.
+
+Process vs. Thread:
+- A process is a program currently undergoing execution. Linux runs many processes at any given time and each are assigned a Process ID (pid) and stored in the /proc directory. Running processes and their PIDs can be viewed using the linux command ps.
+
+- A thread is a lightweight process; there can be multiple threads created by a process. There are single-threaded and multi-threaded processes. In a single-threaded process, the process and thread are the same, and they share the same memory/resources. In a multi-threaded process
+
+Process Group:
+- Process groups allow Linux to keep track of which processes are working together and should be managed together with job control. When a signal is sent to a process group, each process part of that group will receive the signal.
+
+--------------------------
+
+Regular Expression
+
+Explain what is regular expression; what does '\b' mean, any other special pattern?
+- In bash, a regular expression (regex) is a pattern that describes a set of strings. This allows for more concise command operations, allowing "simplification" using one of various metacharacters.
+
+- '\b' is a metacharacter that represents word boundaries This allows search for whole words that match, regardless if it is at beginning/end of a line, or between two blank space characters in a sentence. It matches whole words in 3 different positions:
+
+Before the first character in the string, if the first character is a word character.
+
+After the last character in the string, if the last character is a word character.
+
+Between two characters in the string, where one is a word character and the other is not a word character.
+
+You can find a very detailed version at Linux Systems Interview sample 
+
+---------------------------------------------------------------------
+
+Handling out of memory (OOM)
+
+Developer reported that one of the key services became very unstable recently due to frequently running out of memory (OOM). Tell me how would you troubleshoot and fix the problem
+- Check logs (/var/log) for OOM errors
+- Use tools like `free -m` or `top` to check current memory usage
+- Use `sar` to see history of memory usage
+- Once OOM is confirmed, check timestamp of server logs and cross-reference with app logs
+- Can either add more phys. mem, or debug root cause of memory issue/leak
+
+Reference
+https://www.kernel.org/doc/html/latest/admin-guide/mm/index.html
+https://www.kernel.org/doc/Documentation/cgroup-v1/
+https://www.kernel.org/doc/Documentation/cgroup-v2.txt
+https://linux.die.net/man/1/bash (ulimit section) 
+https://linux.die.net/man/2/getrlimit
+https://linux.die.net/man/2/setrlimit
+https://lwn.net/Articles/317814/
+https://en.wikipedia.org/wiki/Hardware_virtualization 
+https://en.wikipedia.org/wiki/OS-level_virtualization
+https://en.wikipedia.org/wiki/Linux_namespaces
+
+Things should/can be covered/asked/discussed:
+- How do you find out a process' memory usage? How do you trace it?
+Can use `ps -o %mem`
+Can use `pmap <PID> (907kb)`
+Can `cat /proc/meminfo`
+Can use `free` for overall system usage
+Can ue `vmstat` for virtual mem statistics
+
+- What are those different memory types: vm, rss, shared etc.?
+VM is virtual mem, when kernel writes free blocks of memory to disk so memory cna be used elsewhere. Use disk as extension of RAM.
+
+RSS is Resident Set Size shows how much mem allocated to process EXCLUDING swap.
+
+Shared memory is an extra piece attached to an address space where all processes that share the same memory segment have access to it.
+
+- How do you find out about overall system/OS memory usage? 
+Use `free -m` or `top`
+
+- What's the difference between "buffer" and "cache"?
+Buffer is a temp storage area where items are loaded to wait on their way to input or output. It lives solely in RAM.
+
+Cache is smaller and faster and used during r+w operations. Lives in RAM and Disk.
+
+- What might cause OOM? How do you verify your theory?
+Application/java memory leak, for server: traffic spike or API operations increase
+Check the logs (/var/log/syslog), cross-reference with mysql, apache, app logs
+
+- What can you do to limit process's memory? Or how do you find out about current process' memory limit?
+Can use `ulimit` to limit memory a process can use.
+
+Can use `cgroup` or `cgcreate` to create a control group (cgroup) for the process. A new cgroup is created by creating a directory in the cgroup filesystem: mkdir /sys/fs/cgroup/cpu/cg1 This creates a new empty cgroup. A process may be moved to this cgroup by writing its PID into the cgroup's cgroup.
+
+Check the /etc/security/limits.conf file for process current mem limits.
+
+- What is a cgroup? What kind of resources can cgroup control?
+Control Groups are a Linux kernel feature that limit, account for, and isolate the resource usage of a collection of processes.
+
+Can control CPU, memory, disk I/O, network, etc.
+
+Used to limit virtual machine resource usage
+
+- How do you configure a new cgroup? How do you manage processes in a cgroup?
+Can use `cgroup` or `cgcreate` or install the libcgroup package which includes `cgconfig` and a cgconfig.conf file.
+
+- What happens if the process running out of memory limit configured for it? Can you change or control the behavior?
+Could cause an OOM error and crash or other equivalent behavior.
+
+Can change the limits.conf file to allow the process more memory, or add more pRAM.
+
+- [if mentioned virtual machine]What's the difference between a virtual machine and a container? Please describe in as detail as possible, better if you talk about how they are implemented.
+
+A VM is created by a hypervisor (which sits between the hardware and the VM), VMs run their own Guest OSes and are much more robust in terms of size and resource use, as they have their own OS image. Used to virtualize multiple host OSes.
+
+Containers are more lightweight and portable than VMs and share the host OS kernel. Used to run multiple workloads on a single OS instance.
+
+---------------------------------------------------------------------
+
+Troubleshooting out of space issue
+
+You got alert about some filesystem of your production server is 100% full. Tell me how would you troubleshoot and fix the problem
+
+Things should/can be covered/asked/discussed:
+- How do you check which file system(s) is full?
+
+Use `df -h` to check system-wide disk usage stats, shows all mounted devices, filesystems, etc
+
+- How do you find out which file(s) takes most space? How do you find out most recently changed files?
+
+Use `du` for disk use to narrow down to a given dir, sub-dir or file
+Can also see this info with `stat <file>`
+
+- What might've caused this? What error message will you usually see? ( Error 28, No space left on device) 
+
+"No space left on device" error occurs when Linux is running out of storage space.
+
+Can be caused by deleted files that are still in use by processes.
+Can be caused by not enough inodes.
+Can be caused by bad blocks on degraded hard drive.
+
+- What if "du" and "df" have big discrepancy?
+
+Check if deleted files are still in use
+
+Use `lsof | grep deleted` to check for deleted files still being used
+
+- How do you find out which process(es) holds deleted files?
+
+Use `lsof` on root (/) and grep for deleted
+
+Solved by service restart, can use `systemctl restart <service>`
+
+- What if "lsof" is not available, will you still be able to find out those info?
+Yes, with `find /proc/*/fd -ls | grep  '(deleted)'` (where the wildcard represents PID)
+
+- How do you recover space? Can you do it without killing the process?
+Delete large/unnecessary files+packages. Yse `: >` to truncate files (set to 0 length)
+
+No, the process must be killed for the space to be freed.
+
+- Can you recover file content that have been deleted but are still open by some processes? If 
+so, how?
+
+Yes, copy from proc, for example `cp /proc/PID/fd/3 /tmp/recovered_file`
+Can also re-link the deleted file with debugfs
+
+- Can you reclaim space used by useless but big files without causing above problem? If so, how?
+
+Make sure applications close files when finished using them, rather than just "un-linking" such as with tmp files.
+
+- How do you find out what process delete those files?  (inotify, eBPF script, audit)
+Can use strace, but this is known to cause performance issues
+Can use auditd which will show delete operation details
+Can also use inotifywait to notify when a file is deleted
+
+---------------------------------------------------------------------
+
+Managing a production system (junior to mid level)
+
+We will interview senior candidate for design, so this question is for junior to mid level candidate only
+
+You are the first SRE of a small company that has a few production services.  Tell me your strategy to manage those services.
+
+Candidate may ask what those services are? You can tell them it's a website running on Linux, with Apache web server, mysql and php/python (the LAMP stack).  Or if candidate is not familiar with LAMP, assume it's some service they know of (java, node.js etc.)
+
+Things should/can be covered/discussed:
+Try to let candidate talk, ask follow-up questions if candidate mentioned any areas. Only hint/prompt if they are struggling, or having no clue.
+
+- Inventory/capacity management. Candidate should at least find out what/where are those services running.
+
+Inventory and audit all running production services to gauge their role and overall value to the system. Also useful to find out where each service is hosted and what the
+
+- Monitoring. What should be monitored?  How do you collect and how do you use those info?
+Resources, traffic/throughput, HTTP requests and API traffic, upstream/downstream calls. Bsaically alert on any conditions that would require attention.
+
+Aggregate this data in monitoring software interface such as Grafana, Kibana logs, BigQuery, etc.
+
+- Change management. How do you deploy or rollback code? What process will you take?
+
+Automate both deploy and rollback processes, and create a pipeline to build+test+release without 
+human error risk.
+
+- Data security. How do you backup data?  How do you verify your process?
+
+Can use `rsync` to backup data to external drives or cloud storage.
+
+Setup a cronjob with rsync to perform regular backups, since rsync performs checksums to verify there is no need to manually run. But if using a tool that doesn't verify can use "md5sum" or something similar.
+
+- Disaster and high availability. What will you do? What scenario will you cover? 
+
+Prepare by running regularly scheduled DR testing scenarios. Create plenty of documentation with detailed steps on exactly how bring services/site back up. Ensure process is designed to not have any "chokepoints" such as relying on 1-2 people with elevated permissions.
+
+Scenarios to cover would include full DC connectivity loss in one or more region, internal network+site connectivity loss, production database/site loss, etc.
+
+- Operation at scale. What will you do if the scale is 10x, 100x bigger?
+
+Adapt. Expand/upscale gracefully based upon current need using automated solutions. Downscale as/if needed.
+
+Run stress+performance tests regularly to gain insight/experience into multiple scenarios that could prompt a wide range of scaling (small to large).
+
+---------------------------------------------------------------------
+
+Let's talk about load balancer (LB)
+
+To run TikTok at our massive scale, we need to implement load balancers at different level. Can you walk me through the details of load balancers at different levels?
+
+A Layer 4 load balancer works at the transport layer, using the TCP and UDP protocols to manage transaction traffic based on a simple load balancing algorithm and basic information such as server connections and response times. An Layer 7 load balancer works at the application layer—the highest layer in the OSI model—and makes its routing decisions based on more detailed information such as the characteristics of the HTTP/HTTPS header, message content, URL type, and cookie data. An L4-7 load balancer manages traffic based on a set of network services across ISO layers 4 through 7 that provide data storage, manipulation, and communication services.
+
+Reference
+https://en.wikipedia.org/wiki/Load_balancing_(computing)
+https://en.wikipedia.org/wiki/Multilayer_switch
+https://en.wikipedia.org/wiki/Proxy_server
+
+Things should/can be covered/asked/discussed:
+- L7 LB, or reverse proxy
+
+The layer 7 load-balancer acts as a proxy, which means it maintains two TCP connections: one with the client and one with the server.
+
+  - Walk me through the whole process, we can use a HTTP GET request to "/user/shopping?lang=en&country=us" as example.
+
+  Request:
+  Client Request -> LB/Proxy -> Target Endpoint -> Server
+
+  Response:
+  Server -> Target Endpoint -> LB/Proxy -> Client
+
+  - Can you also talk about forward proxy? TLS/SSL handling?
+  Forward proxy is most commonly used. In place to protect clients, as multiple clients can send requests to the proxy and it will forward it to correct server.
+
+  For L4 LB tls/ssl certs need to be installed on every host.
+
+  For L7 LB tls/ssl certs installed and managed on the LB.
+
+  - When should you use them?
+  Use forward proxy when you need to protect clients in the internal network.
+
+  Use reverse proxy to protect servers from the clients.
+
+- L4 LB
+  - What are possible architecture/modes? 
+  NAT, DSR, TUN
+
+  Network Address Translation (NAT) mode is when the load-balancer will route traffic between user and server by changing destination IP address of the packets.
+
+  Direct Server Return (DSR) is when the response is sent direcet from server back to client (no LB). Might be good to use for streaming service.
+
+  Network TUNnel is like DSR mode, except that traffic between the load-balancer and the server can be routed. The LB encapsulates the request in an IP tunnel to the server. The server recovers the request from the LB, processe it and forwards the response directly to the client.
+
+  - How do you choose? (NAT, DR , TUN)
+  TUN, namely network TUNnel, simulates a network layer device and operates in layer 3 carrying IP packets.
+  
+  - Walk me through the whole process, we can use one packet with (client ip, client port, server ip, server port, protocol) as example
+
+  Layer 4 load balancing makes its routing decisions based on information defined at the networking transport layer, L-4. The layer 4 load balancer also performs Network Address Translation (NAT) on the request packet as it receives a request and makes the load balancing decision. In the NAT process, the layer 4 load balancer chooses a content server on the internal network and changes the destination IP address from its own to that of the selected server
+
+  - What algorithm do you use to pick backend servers? How do you decide which one to use?
+  Round-robin is most widely used. Of servers in a list route from top-down, then go back to top and start again.
+
+  Least Connection chooses to send traffic to app server with least number of active connections at the time.
+
+  Weighted is when the admin assigns a weight to each app server based on criteria of their choosing to demonstrate its traffic-handling capability.
+
+---------------------------------------------------------------------
+
+Let's talk about troubleshooting
+
+You got complaints from users about the TikTok website very slow to load. Would you mind telling me what procedure and tools you use for troubleshooting the problem? 
+
+Things should/can be covered/asked/discussed
+- From client side:
+  - DNS slow? How do you verify? (nslookup, dig, host)
+  Can use `time dig 8.8.8.8` from various sources
+
+  - How do you narrow down the scope? 
+    - Certain geolocation slow? How do you verify?
+    Run tests from various locations and geos, not just on local computer from internal network.
+
+    - Certain user group slow? How do you use this info?
+
+  - Changes made on client side recently?
+  Check for changes on both client and server end. If confirmed none on either side, begin troubleshooting from various sources inside and outside the network.
+
+  - How to check network communication? (tcpdump, wireshark, netstat, ss etc.)
+  Use `tcpdump` to capture network stats in a .pcap file and analyze with software such as wireshark. Wireshark allows packet analysis from end to end, client -> server.
+
+  Use `netstat` to list network status and active connections.
+
+- From server side:
+  - Server busy? How do you verify?
+  Use `uptime` will show load averages
+  Use other tools such as `iftop` or `nload` for more detail
+
+  - Server crash loop? How do you troubleshoot? (strace, perf trace, gdb)
+  Use `strace` or `perf-trace` to see more info about how a program is interacting with the OS. GDB is a more robust debug tool but may take more time to use due to complexity.
+  
+  - Can you talk more about strace and perf trace? What's the difference and why?
+  strace can be seen as a light weight debugger. It allows a programmer / user to quickly find out how a program is interacting with the OS. It does this by monitoring system calls and signals.
+
+  `perf-trace` sometimes considered replacement to `strace` because it's faster and less taxing on the system, has overall better performance.
+
+  - Incorrect resource limit? How do you verify?
+  Use `prlimit` or can check /proc/PID/limits
+  
+  - How do you find out where are log files? How to do process log file? (trace + lsof, gdb)
+  Use `lsof` to see which processes are writing to logs, then use `trace` on the PID of those processes
+  
+  - How do you find out MySQL server's IP current web server is using? Memcache server it's using? (netstat, ss and some luck)
+  asdf
+  
+  - How do you trace library calls? (ltrace)
+  Use `ltrace` for library calls, will also show functions.
+  
+  - How do you find out web server's environment variables and current work directory? If it's running inside a chroot or container? (/proc)
+  In Kubernetes, can use `kubectl exec <POD_NAME> -- printenv`
+  In Kubernetes, can use `kubectl get pods -o wide` to list all pods with more details
+
+  In chroot, can create a script to loop over `/proc/PID/root` to get details about processes running in there
+
+---------------------------------------------------------------------
+
+Let's talk about VLAN/VxLAN
+
+Please tell me all about VLAN, in as detail as possible. Can you also do that for VxLAN?
+Virtual Local Area Networks (VLAN)
+
+VLANs (Virtual LANs) are logical grouping of devices in the same broadcast domain. VLANs are usually configured on switches by placing some interfaces into one broadcast domain and some interfaces into another. Each VLAN acts as a subgroup of the switch ports in an Ethernet LAN.
+
+VxLAN is very similar to VLAN. VxLAN virtually extends a layer 2 segment across the layer 3 network infrastructure. VxLAN encapsulates the layer 2 Ethernet frames inside a VXLAN packet that includes an IP address.
+
+The main difference is that VLAN uses the tag on the layer 2 frame for encapsulation and can scale up to 4000 VLANs. VXLAN, on the other hand, encapsulates the MAC in UDP and is capable of scaling up to 16 million VxLAN segments. VxLAN improves the scalability in a network or virtualized data center, and it also makes its fabric more flexible. The number of VLAN layer 2 identifiers are drastically increased from 4,000 to 16 million.
+
+Reference
+https://en.wikipedia.org/wiki/Virtual_LAN
+https://tools.ietf.org/html/rfc7348 
+
+Things should/can be covered/asked/discussed:
+- When do we need VLAN?
+When need to segment a larger network (Such as corporate office) into smaller segments. Example, separate staff from guest traffic.
+
+- VLAN implementation, VLAN membership management
+Configured by logging into the network switch or software
+
+- What's the limitation of VLAN
+Max number of VLANs on a given Ethernet network is 4,094
+
+- When do we need VxLAN?
+When more logical networks are needed; max is ~16 million
+
+- VxLAN implementation, VxLAN membership management
+
+- What's the limitation of VxLAN
+
+---------------------------------------------------------------------
+
+What happens when you turn on your computer?
+
+Goal for computer is to boot the OS. OS helps other programs work by handling control of computer hardware.
+
+BIOS -> MBR (stage 1 BL) -> GRUB/LILO (stage 2 BL) -> Kernel (linux) -> init/SysV -> Runlevel
+
+Boot process is as follows:
+1. BIOS - Basic Input Output System. Executs MBR.
+2. MBR - Master Boot Record. Executes GRUB.
+3. GRUB - GRand Unified Bootloader. Exceutes kernel.
+4. Kernel - The Linux kernel. Executes /sbin/init
+5. Init - Executes runlevel programs.
+6. Runlevel - Runlevel programs are executed from /etc/rc.d/rc<NUM>.d
+
+1. BIOS / Boot Monitor:
+- Power On Self Test (POST) initializes the various hardware devices, ensuring smooth operation without conflict. Tables are created describing said devices. POST first checks BIOS then tests the CMOS RAM. Then POST checks CPU -> GPU -> HDD/Floppy/CD, etc. if any errors are found POST beep codes sound.
+- Performs some system integrity checks
+- Searches, loads, and executes the boot loader program.
+- It looks for boot loader in floppy, cd-rom, or hard drive. You can press a key (typically F12 of F2, but it depends on your system) during the BIOS startup to change the boot sequence.
+- Once the boot loader program is detected and loaded into the memory, BIOS gives the control to it.
+
+2. MBR (Master Boot Record):
+- Master Boot Record (MBR) program to find the OS during boot. Process starts with POST and ends when BIOS searches for MBR on hard drive. The bootstrap loader in computer's EPROM, ROM or other non-volatile memory. If POST is successful, the bootstrap loader will load OS into memory for quick access, load and run.
+- It is located in the 1st sector of the bootable disk. Typically /dev/hda, or /dev/sda
+- MBR is less than 512 bytes in size. This has three components 1) primary boot loader info in 1st 446 bytes 2) partition table info in next 64 bytes 3) mbr validation check in last 2 bytes.
+- It contains information about GRUB (or LILO in old systems).
+
+3. GRUB (GRand Unified Bootloader):
+- If you have multiple kernel images installed on your system, you can choose which one to be executed.
+- GRUB displays a splash screen, waits for few seconds, if you don’t enter anything, it loads the default kernel image as specified in the grub configuration file.
+- GRUB has the knowledge of the filesystem (the older Linux loader LILO didn’t understand filesystem).
+- Grub configuration file is /boot/grub/grub.conf (/etc/grub.conf is a link to this)
+
+4. Kernel
+- Mounts the root file system as specified in the “root=” in grub.conf
+- Kernel executes the /sbin/init program
+- Since init was the 1st program to be executed by Linux Kernel, it has the process id (PID) of 1. Do a ‘ps -ef | grep init’ and check the pid.
+- initrd stands for Initial RAM Disk.
+- initrd is used by kernel as temporary root file system until kernel is booted and the real root file system is mounted. It also contains necessary drivers compiled inside, which helps it to access the hard drive partitions, and other hardware.
+
+5. Init
+- Init is the last step of the kernel boot sequence. Checks for file in /etc/inittab to see if there is an entry for initdefault, used to determine the initial runlevel of the system.
+- Runlevel is used to decide the initial state of the OS.
+- Looks at the /etc/inittab file to decide the Linux run level.
+- Following are the available run levels
+0 – halt
+1 – Single user mode
+2 – Multiuser, without NFS
+3 – Full multiuser mode
+4 – unused
+5 – X11
+6 – reboot
+
+- Init identifies the default initlevel from /etc/inittab and uses that to load all appropriate program.
+- Execute ‘grep initdefault /etc/inittab’ on your system to identify the default run level
+- If you want to get into trouble, you can set the default run level to 0 or 6. Since you know what 0 and 6 means, probably you might not do that.
+- Typically you would set the default run level to either 3 or 5.
+
+6. Runlevel
+A mode of operation in a Unix-based OS. It defines the state of the machine after boot.
+
+0 - Halt / Shutdown system
+1 - Single-user mode
+2 - Multi-user mode
+3 - Multi-user mode w/ networking
+4 - Not used/undefined
+5 - Normal startup. Same as level 3 with display manager
+6 - Reboot
+
+Above design of init is called SysV (System Five). Next step is starting various daemons for networking/other services. X Server is one of most important as it manages display, keyboard and mouse. 
+
+What is systemd?
+- Systemd main goal is to reduce the boot time and computational overhead. Backwards compatible with SysV init scripts. Core features include:
+	- The boot process is much simpler as compared to the init
+	- Systemd provides concurrent and parallel process of system boot so it ensures better boot speed
+	- Processes are tracked using control groups, not by PIDs
+	- Improved ways to handle boot and services dependencies.
+	- Capability of system snapshots and restore
+	- Monitoring of started services ; also capabale of restarting any crashed services
+	- Includes systemd-login module to control user logins.
+	- Ability to add and remove components
+	- Low memory foot prints and ability for job scheduling
+	- Journald module for event logging and syslogd module for system log.
+
+Systemd handles boot and services management process using “targets”. The ”target" files in systemd are used for grouping different boot units and start up synchronization processes:
+	- default.target (symlink to graphical.target)
+	- multi-user.target
+	- basic.target
+	- Sysinit.target
+	- local-fs.target
+
